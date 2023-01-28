@@ -1,3 +1,4 @@
+const ErrorResponse = require("../utils/errorRespone");
 const Bootcamp = require("../models/Bootcamp");
 
 // @desc   Get all bootcamps
@@ -17,7 +18,7 @@ exports.getBootcamps = async (req, res, next) => {
 };
 
 // @desc   Get single bootcamp
-// @route  GET /api/v1/bootcamps
+// @route  GET /api/v1/bootcamps/:bid
 // @access Public
 exports.getBootcamp = async (req, res, next) => {
 	try {
@@ -28,7 +29,13 @@ exports.getBootcamp = async (req, res, next) => {
 			data: bootcamp,
 		});
 	} catch (err) {
-		res.status(400).json({ success: false });
+		// res.status(400).json({ success: false });
+		next(
+			new ErrorResponse(
+				`Bootcamp not found with id ${req.params.bid}`,
+				404
+			)
+		);
 	}
 };
 
