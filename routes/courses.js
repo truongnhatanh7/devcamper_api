@@ -1,8 +1,14 @@
 const express = require("express");
-const { getCourses, getCourse, addCourse } = require("../controllers/courses");
+const {
+	getCourses,
+	getCourse,
+	addCourse,
+	updateCourse,
+	deleteCourse,
+} = require("../controllers/courses");
 const router = express.Router({ mergeParams: true }); // Because re-route from bootcamp
 
 router.route("/").get(getCourses).post(addCourse);
-router.route("/:id").get(getCourse);
+router.route("/:id").get(getCourse).put(updateCourse).delete(deleteCourse);
 
 module.exports = router;
