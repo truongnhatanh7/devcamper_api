@@ -1,3 +1,4 @@
+const crypto = require("crypto");
 const ErrorResponse = require("../utils/errorRespone");
 const asyncHandler = require("../middleware/async");
 const sendEmail = require("../utils/sendEmail");
@@ -115,7 +116,7 @@ exports.forgotPassword = asyncHandler(async (req, res, next) => {
 
 	const resetUrl = `${req.protocol}://${req.get(
 		"host"
-	)}/api/v1/resetpassword/${resetToken}`;
+	)}/api/v1/auth/resetpassword/${resetToken}`;
 
 	const message = `Yasuo is the best ${resetUrl}`;
 
@@ -138,4 +139,33 @@ exports.forgotPassword = asyncHandler(async (req, res, next) => {
 		await user.save({ validateBeforeSave: false });
 		return next(new ErrorResponse("Email could not be sent", 500));
 	}
+});
+
+// @desc   reset password
+// @route  PUT /api/v1/auth/resetpassword/:resettoken
+// @access Public
+exports.resetPassword = asyncHandler(async (req, res, next) => {
+  // Get hashed token
+  const resetPasswordToken = crypto
+    .createHash('sha256')
+    .update(req.params.resettoken)
+    .digest('hex');
+	// const temp = req.params.resettoken
+	console.log(resetPasswordToken.toString());
+	// console.log(temp);
+	const user = await User.findOne({
+		resetPasswordToken
+	});
+
+	if (!user) {
+		return next(new ErrorResponse("Invalid token", 400));
+	}
+
+	// Set new password
+	user.password = req.body.password;
+	user.resetPasswordToken = undefined;
+	user.resetPasswordExpire = undefined;
+	await user.save();
+
+	sendTokenResponse(user, 200, res);
 });
