@@ -1,5 +1,6 @@
 const ErrorResponse = require("../utils/errorRespone");
 const asyncHandler = require("../middleware/async");
+const sendEmail = require("../utils/sendEmail");
 const User = require("../models/User");
 
 // @desc   Register user
@@ -90,4 +91,51 @@ exports.getMe = asyncHandler(async (req, res, next) => {
 		success: true,
 		data: user,
 	});
+});
+
+// @desc   Forgot password
+// @route  POST /api/v1/auth/forgotpassword
+// @access Public
+exports.forgotPassword = asyncHandler(async (req, res, next) => {
+	const user = await User.findOne({ email: req.body.email });
+
+	if (!user) {
+		return next(
+			new ErrorResponse(
+				"There is no user with that email",
+				404
+			)
+		);
+	}
+
+	// Get reset token
+	const resetToken = user.getResetPasswordToken();
+
+	await user.save({ validateBeforeSave: false });
+
+	const resetUrl = `${req.protocol}://${req.get(
+		"host"
+	)}/api/v1/resetpassword/${resetToken}`;
+
+	const message = `Yasuo is the best ${resetUrl}`;
+
+	try {
+		await sendEmail({
+			email: user.email,
+			subject: "Password reset",
+			message,
+		});
+
+		res.status(200).json({
+			success: true,
+			data: "Email sent",
+		});
+	} catch (err) {
+		console.error(err);
+		user.resetPasswordExpire = undefined;
+		user.resetPasswordToken = undefined;
+
+		await user.save({ validateBeforeSave: false });
+		return next(new ErrorResponse("Email could not be sent", 500));
+	}
 });
