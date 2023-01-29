@@ -145,16 +145,17 @@ exports.forgotPassword = asyncHandler(async (req, res, next) => {
 // @route  PUT /api/v1/auth/resetpassword/:resettoken
 // @access Public
 exports.resetPassword = asyncHandler(async (req, res, next) => {
-  // Get hashed token
-  const resetPasswordToken = crypto
-    .createHash('sha256')
-    .update(req.params.resettoken)
-    .digest('hex');
+	// Get hashed token
+	const resetPasswordToken = crypto
+		.createHash("sha256")
+		.update(req.params.resettoken)
+		.digest("hex");
 	// const temp = req.params.resettoken
 	console.log(resetPasswordToken.toString());
 	// console.log(temp);
 	const user = await User.findOne({
-		resetPasswordToken
+		resetPasswordToken,
+		resetPasswordExpire: { $gt: Date.now() },
 	});
 
 	if (!user) {
@@ -165,6 +166,42 @@ exports.resetPassword = asyncHandler(async (req, res, next) => {
 	user.password = req.body.password;
 	user.resetPasswordToken = undefined;
 	user.resetPasswordExpire = undefined;
+	await user.save();
+
+	sendTokenResponse(user, 200, res);
+});
+
+// @desc   Update user details
+// @route  PUT /api/v1/auth/updatedetails
+// @access Private
+exports.updateDetails = asyncHandler(async (req, res, next) => {
+	const filesToUpdate = {
+		name: req.body.name,
+		email: req.body.email,
+	};
+	const user = await User.findById(req.user.id, filesToUpdate, {
+		new: true,
+		runValidators: true,
+	});
+
+	res.status(200).json({
+		success: true,
+		data: user,
+	});
+});
+
+// @desc   Update password
+// @route  PUT /api/v1/auth/updatepassword
+// @access Private
+exports.updatePassword = asyncHandler(async (req, res, next) => {
+	const user = await User.findById(req.user.id).select("+password");
+
+	// Check current password
+	if (!(await user.matchPassword(req.body.currentpassword))) {
+		return next(new ErrorResponse("Incorrect password", 401));
+	}
+
+	user.password = req.body.newpassword;
 	await user.save();
 
 	sendTokenResponse(user, 200, res);
